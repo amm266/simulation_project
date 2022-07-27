@@ -2,27 +2,35 @@ import random
 
 import ciw
 
-servers_number = [10, 10, 10, 10, 10, 10, 20]
+class_names = ["peygiri sefaresh", "darkhast peyk", "moshahede restoran web", "moshahede restoran mobile",
+               "ersal payam peyk", "sabt sefaresh web", "sabt sefaresh mobile"]
+node_names = ["web", "api", "payment", "peyk", "sefaresh", "moshtari", "restoran"]
+
+# inputs:
+servers_number = [1, 1, 1, 2, 5, 3, 2]
+priority_class = [1, 0, 1, 1, 1, 0, 0]
+class_error_rate = [0.01, 0.01, 0.2, 0.1, 0.03, 0.02, 0.02]
+class_arrival_prob = [0.05, 0.20, 0.15, 0.25, 0.05, 0.10, 0.20]
+landa = 20
+max_wait_time = [25, 30, 25, 30, 30, 40, 20]
 
 
-def define_network(servers_number):
+def define_network(servers_number, class_error_rates, priority_class, class_arrival_prob, landa, max_wait_time):
     # servers order:
-    priority_class = [1, 0, 1, 1, 1, 0, 0]
-    class_arrival_prob = [0.05, 0.20, 0.15, 0.25, 0.05, 0.10, 0.20]
-    e1 = lambda x: 0.01
-    e2 = lambda x: 0.01
-    e3 = lambda x: 0.2
-    e4 = lambda x: 0.1
-    e5 = lambda x: 0.03
-    e6 = lambda x: 0.02
-    e7 = lambda x: 0.02
-    reneging_dist = {'Class 0': [ciw.dists.Deterministic(300) for i in range(7)],
-                     'Class 1': [ciw.dists.Deterministic(300) for i in range(7)],
-                     'Class 2': [ciw.dists.Deterministic(300) for i in range(7)],
-                     'Class 3': [ciw.dists.Deterministic(300) for i in range(7)],
-                     'Class 4': [ciw.dists.Deterministic(300) for i in range(7)],
-                     'Class 5': [ciw.dists.Deterministic(300) for i in range(7)],
-                     'Class 6': [ciw.dists.Deterministic(300) for i in range(7)],
+    e1 = lambda x: class_error_rates[0]
+    e2 = lambda x: class_error_rates[1]
+    e3 = lambda x: class_error_rates[2]
+    e4 = lambda x: class_error_rates[3]
+    e5 = lambda x: class_error_rates[4]
+    e6 = lambda x: class_error_rates[5]
+    e7 = lambda x: class_error_rates[6]
+    reneging_dist = {'Class 0': [ciw.dists.Deterministic(max_wait_time[0]) for i in range(7)],
+                     'Class 1': [ciw.dists.Deterministic(max_wait_time[1]) for i in range(7)],
+                     'Class 2': [ciw.dists.Deterministic(max_wait_time[2]) for i in range(7)],
+                     'Class 3': [ciw.dists.Deterministic(max_wait_time[3]) for i in range(7)],
+                     'Class 4': [ciw.dists.Deterministic(max_wait_time[4]) for i in range(7)],
+                     'Class 5': [ciw.dists.Deterministic(max_wait_time[5]) for i in range(7)],
+                     'Class 6': [ciw.dists.Deterministic(max_wait_time[6]) for i in range(7)],
                      }
     service_dist = [ciw.dists.Exponential(rate=1 / 3),
                     ciw.dists.Exponential(rate=1 / 2),
@@ -32,16 +40,14 @@ def define_network(servers_number):
                     ciw.dists.Exponential(rate=1 / 5),
                     ciw.dists.Exponential(rate=1 / 8)]
 
-    landa = 30
-
     arrival_dist_peygiri = [ciw.dists.NoArrivals(),
-                            ciw.dists.Exponential(rate=1/(landa*class_arrival_prob[0])),
+                            ciw.dists.Exponential(rate=1 / (landa * class_arrival_prob[0])),
                             ciw.dists.NoArrivals(),
                             ciw.dists.NoArrivals(),
                             ciw.dists.NoArrivals(),
                             ciw.dists.NoArrivals(),
                             ciw.dists.NoArrivals()]
-    arrival_dist_peyk = [ciw.dists.Exponential(rate=1/(landa*class_arrival_prob[1])),
+    arrival_dist_peyk = [ciw.dists.Exponential(rate=1 / (landa * class_arrival_prob[1])),
                          ciw.dists.NoArrivals(),
                          ciw.dists.NoArrivals(),
                          ciw.dists.NoArrivals(),
@@ -179,14 +185,21 @@ def define_network(servers_number):
     return N
 
 
-def get_que_length_mean(recs, node_n):
-    que_sizes = []
+def get_que_length_mean(recs, node_n, total_time):
+    que_time_length = []
     for rec in recs:
         if rec.node == node_n:
-            que_sizes.append(rec.queue_size_at_arrival)
-    if len(que_sizes) == 0:
+            que_time_length.append((rec.arrival_date, rec.queue_size_at_arrival))
+            que_time_length.append((rec.exit_date, rec.queue_size_at_departure))
+    if len(que_time_length) == 0:
         return 0
-    return sum(que_sizes) / len(que_sizes)
+    que_time_length = sorted(que_time_length, key=lambda tup: tup[0])
+    sum_que_length = 0
+    for i in range(len(que_time_length) - 1):
+        l = (que_time_length[i + 1][1] + que_time_length[i][1]) / 2
+        d_t = que_time_length[i + 1][0] - que_time_length[i][0]
+        sum_que_length += l * d_t
+    return sum_que_length / total_time
 
 
 def wait_in_que_mean(recs):
@@ -225,20 +238,17 @@ def get_baulked_class(baulked_dict, total_costumers: list):
         for i in range(7):
             baulked_class[i] += len(baulked_dict[node_id][i])
     for i in range(7):
-        baulked_class[i] = baulked_class[i] / total_costumers[i]
-    all_mean_baulked_class = sum(baulked_class) / sum(total_costumers)
+        baulked_class[i] = baulked_class[i] / (total_costumers[i] + baulked_class[i])
+    all_mean_baulked_class = sum(baulked_class) / (sum(total_costumers) + sum(baulked_class))
     return baulked_class, all_mean_baulked_class
 
 
 total_time = 28000
 ciw.seed(random.randint(0, 100))
-Q = ciw.Simulation(define_network(servers_number), deadlock_detector=ciw.deadlock.StateDigraph(),
-                   tracker=ciw.trackers.NaiveBlocking())
+Q = ciw.Simulation(define_network(servers_number, class_error_rate, priority_class, class_arrival_prob, landa, max_wait_time))
 Q.simulate_until_max_time(total_time)
+
 recs = Q.get_all_records()
-service_times = [rec.service_time for rec in recs]
-r6 = recs[6]
-record_types = set([rec.record_type for rec in recs])
 id_rec_dict = dict()
 times = []
 total_costumers = [0, 0, 0, 0, 0, 0, 0]
@@ -251,14 +261,20 @@ for id_number in id_rec_dict:
     total_costumers[id_rec_dict[id_number][0].customer_class] += 1
 
 for i in range(1, 8):
-    print("que length of node: ", i, " ", get_que_length_mean(recs, i))
+    print("mean que length of node: ", node_names[i - 1], " ", get_que_length_mean(recs, i, total_time))
+    node_util = get_node_util(recs, i, servers_number[i - 1], total_time)
     print("node util: ", get_node_util(recs, i, servers_number[i - 1], total_time))
+    if node_util > 0.99:
+        print("node ", node_names[i - 1], " is overloaded")
 class_wait_times, all_mean_wait_time = wait_in_que_mean(recs)
-print("class wait times: ", class_wait_times)
+for i in range(7):
+    print("mean wait time in class: ", class_names[i], ": ", class_wait_times[i])
 print("all mean wait time: ", all_mean_wait_time)
 reneged_requests, all_mean_reneged_requests = get_reneged_requests(id_rec_dict, total_costumers)
-print("reneged requests: ", reneged_requests)
+for i in range(7):
+    print("fraction of reneged requests in class: ", class_names[i], ": ", reneged_requests[i])
 print("all mean reneged requests: ", all_mean_reneged_requests)
 baulked_class, all_mean_baulked_class = get_baulked_class(Q.baulked_dict, total_costumers)
-print("baulked class: ", baulked_class)
+for i in range(7):
+    print("fraction of baulked requests in class: ", class_names[i], ": ", baulked_class[i])
 print("all mean baulked class: ", all_mean_baulked_class)
