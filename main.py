@@ -16,13 +16,13 @@ def define_network(servers_number):
     e5 = lambda x: 0.03
     e6 = lambda x: 0.02
     e7 = lambda x: 0.02
-    reneging_dist = {'Class 0': [ciw.dists.Deterministic(30) for i in range(7)],
-                     'Class 1': [ciw.dists.Deterministic(30) for i in range(7)],
-                     'Class 2': [ciw.dists.Deterministic(30) for i in range(7)],
-                     'Class 3': [ciw.dists.Deterministic(30) for i in range(7)],
-                     'Class 4': [ciw.dists.Deterministic(30) for i in range(7)],
-                     'Class 5': [ciw.dists.Deterministic(30) for i in range(7)],
-                     'Class 6': [ciw.dists.Deterministic(30) for i in range(7)],
+    reneging_dist = {'Class 0': [ciw.dists.Deterministic(300) for i in range(7)],
+                     'Class 1': [ciw.dists.Deterministic(300) for i in range(7)],
+                     'Class 2': [ciw.dists.Deterministic(300) for i in range(7)],
+                     'Class 3': [ciw.dists.Deterministic(300) for i in range(7)],
+                     'Class 4': [ciw.dists.Deterministic(300) for i in range(7)],
+                     'Class 5': [ciw.dists.Deterministic(300) for i in range(7)],
+                     'Class 6': [ciw.dists.Deterministic(300) for i in range(7)],
                      }
     service_dist = [ciw.dists.Exponential(rate=1 / 3),
                     ciw.dists.Exponential(rate=1 / 2),
@@ -48,7 +48,7 @@ def define_network(servers_number):
                          ciw.dists.NoArrivals(),
                          ciw.dists.NoArrivals(),
                          ciw.dists.NoArrivals()]
-    arrival_dist_det_web = [ciw.dists.Exponential(rate=100 / (landa * class_arrival_prob[2])),
+    arrival_dist_det_web = [ciw.dists.Exponential(rate=1 / (landa * class_arrival_prob[2])),
                             ciw.dists.NoArrivals(),
                             ciw.dists.NoArrivals(),
                             ciw.dists.NoArrivals(),
@@ -56,20 +56,20 @@ def define_network(servers_number):
                             ciw.dists.NoArrivals(),
                             ciw.dists.NoArrivals()]
     arrival_dist_det_mobile = [ciw.dists.NoArrivals(),
-                               ciw.dists.Exponential(rate=100 / (landa * class_arrival_prob[3])),
+                               ciw.dists.Exponential(rate=1 / (landa * class_arrival_prob[3])),
                                ciw.dists.NoArrivals(),
                                ciw.dists.NoArrivals(),
                                ciw.dists.NoArrivals(),
                                ciw.dists.NoArrivals(),
                                ciw.dists.NoArrivals()]
     arrival_dist_peyk_payam = [ciw.dists.NoArrivals(),
-                               ciw.dists.Exponential(rate=100 / (landa * class_arrival_prob[4])),
+                               ciw.dists.Exponential(rate=1 / (landa * class_arrival_prob[4])),
                                ciw.dists.NoArrivals(),
                                ciw.dists.NoArrivals(),
                                ciw.dists.NoArrivals(),
                                ciw.dists.NoArrivals(),
                                ciw.dists.NoArrivals()]
-    arrival_dist_order_web = [ciw.dists.Exponential(rate=100 / (landa * class_arrival_prob[5])),
+    arrival_dist_order_web = [ciw.dists.Exponential(rate=1 / (landa * class_arrival_prob[5])),
                               ciw.dists.NoArrivals(),
                               ciw.dists.NoArrivals(),
                               ciw.dists.NoArrivals(),
@@ -77,7 +77,7 @@ def define_network(servers_number):
                               ciw.dists.NoArrivals(),
                               ciw.dists.NoArrivals()]
     arrival_dist_order_mobile = [ciw.dists.NoArrivals(),
-                                 ciw.dists.Exponential(rate=100 / (landa * class_arrival_prob[6])),
+                                 ciw.dists.Exponential(rate=1 / (landa * class_arrival_prob[6])),
                                  ciw.dists.NoArrivals(),
                                  ciw.dists.NoArrivals(),
                                  ciw.dists.NoArrivals(),
@@ -230,12 +230,11 @@ def get_baulked_class(baulked_dict, total_costumers: list):
     return baulked_class, all_mean_baulked_class
 
 
-total_time = 1000
+total_time = 28000
 ciw.seed(random.randint(0, 100))
 Q = ciw.Simulation(define_network(servers_number), deadlock_detector=ciw.deadlock.StateDigraph(),
                    tracker=ciw.trackers.NaiveBlocking())
 Q.simulate_until_max_time(total_time)
-# Q.simulate_until_max_customers(50)
 recs = Q.get_all_records()
 service_times = [rec.service_time for rec in recs]
 r6 = recs[6]
